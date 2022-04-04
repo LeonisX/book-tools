@@ -16,15 +16,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 // Load 8-bit BMP only!!!!!!!!!!!!
-
-// 1. Convert images to 256 BMP
-// 2. Optimize palette
-// 3. Convert images to 32 PNG
 public class PaletteOptimize {
 
     private static final int threshold = 120; // разделитель между тёмными и светлыми цветами
+    private static final int whiteGroup = 8; // диапазон группировки светлых цветов; если тёмный фон, то 8, если белый, то 16
 
-    private static final Path path = Paths.get("C:\\Documents and Settings\\user\\Documents\\Лучшие игры для IBM PC\\bmp600-256");
+    private static final Path path = Paths.get("C:\\Users\\user\\Documents\\1500 игр Sega\\1500 игр Sega\\bmp256");
     private static final Path outPath = path.resolve("optimized");
 
     public static void main(String[] args) throws IOException {
@@ -67,12 +64,11 @@ public class PaletteOptimize {
             int color = (to256(reds[i]) + to256(greens[i]) + to256(blues[i])) / 3;
 
             if (color > threshold) {
-                int d = 8;
-                int dh = d / 2;
-                color = color / d * d + dh;
-                reds[i] = (byte) (color / d * d + dh + (red - mid));
-                greens[i] = (byte) (color / d * d + dh + (green - mid));
-                blues[i] = (byte) (color / d * d + dh + (blue - mid));
+                int dh = whiteGroup / 2;
+                color = color / whiteGroup * whiteGroup + dh;
+                reds[i] = (byte) (Math.min(255, color / whiteGroup * whiteGroup + dh + (red - mid)));
+                greens[i] = (byte) (Math.min(255, color / whiteGroup * whiteGroup + dh + (green - mid)));
+                blues[i] = (byte) (Math.min(255, color / whiteGroup * whiteGroup + dh + (blue - mid)));
 
             } else {
                 color = color / 4 * 4;
