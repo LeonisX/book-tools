@@ -17,7 +17,7 @@ import static java.awt.image.BufferedImage.TYPE_INT_RGB;
 public class BorderFix {
 
     private static final Profile profile = new Profile()
-            .withPath("C:\\Users\\user\\Documents\\Simba's Описание видеоигр. Том 4\\bmp\\result")
+            .withPath("C:\\Users\\user\\Documents\\Simba's Описание видеоигр. Том 4\\bm\\result")
             // final page dimensions
             .withWidth(3820)
             .withHeight(5530)
@@ -52,10 +52,12 @@ public class BorderFix {
             processImage(readImage(fileName), fileName);*/
 
         } else {
-
             Files.createDirectories(profile.getOutputPath());
 
             List<String> files = Files.list(profile.getPath()).filter(f -> !Files.isDirectory(f)).map(f -> f.getFileName().toString()).collect(Collectors.toList());
+            if (files.isEmpty()) {
+                System.out.println("Couldn't find any file here: " + profile.getPath());
+            }
             for (String file : files) {
                 System.out.print(file);
                 processImage(readImage(file), file);
