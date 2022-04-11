@@ -17,10 +17,10 @@ import static java.awt.image.BufferedImage.TYPE_INT_RGB;
 public class BorderFix {
 
     private static final Profile profile = new Profile()
-            .withPath("C:\\Users\\user\\Documents\\Simba's Описание видеоигр. Том 4\\bm\\result")
+            .withPath("C:\\Users\\user\\Downloads\\bbb\\PlayStation от А до Я. Секреты, пароли, подсказки. Издание 8, дополненное\\tr\\out\\result")
             // final page dimensions
-            .withWidth(3820)
-            .withHeight(5530)
+            .withWidth(3640)
+            .withHeight(5500)
             // Indents on all sides, for which black spots are not taken into account (may be massive). 25 for 600 DPI
             .withDx(30)
             .withDy(30)
@@ -37,24 +37,16 @@ public class BorderFix {
 
     public static void main(String[] args) throws IOException {
 
-        /*int multiplier = 5;
-        String fileName = "corrupted-border-" + multiplier + ".bmp";
-        processImage(readImage(fileName), fileName);*/
-
         if (debug) {
             profile.withPath("C:\\Users\\user\\Documents\\Страна PlayStation Большая книга многосерийных хитов\\test");
             String fileName = "page_288.bmp";
             Files.createDirectories(profile.getOutputPath());
             processImage(readImage(fileName), fileName);
-            /*fileName = "page_191.bmp";
-            processImage(readImage(fileName), fileName);
-            fileName = "page_192.bmp";
-            processImage(readImage(fileName), fileName);*/
 
         } else {
             Files.createDirectories(profile.getOutputPath());
 
-            List<String> files = Files.list(profile.getPath()).filter(f -> !Files.isDirectory(f)).map(f -> f.getFileName().toString()).collect(Collectors.toList());
+            List<String> files = Files.list(profile.getPath()).filter(f -> !Files.isDirectory(f)).map(f -> f.getFileName().toString()).filter(f -> f.endsWith(".bmp")).collect(Collectors.toList());
             if (files.isEmpty()) {
                 System.out.println("Couldn't find any file here: " + profile.getPath());
             }
@@ -84,6 +76,7 @@ public class BorderFix {
             saveImage(resizedImage, file, "resized");
         }
 
+        //TODO return or delete this???
         /*if (profile.isForceFixBorders()) {
             int wx = (profile.getWidth() - image.getWidth()) / 2;
             int wy = (profile.getHeight() - image.getHeight()) / 2;
@@ -102,7 +95,7 @@ public class BorderFix {
             saveImage(finalImage, file, "");
         }
 
-        System.out.println(String.format(": %s x %s", finalImage.getWidth(), finalImage.getHeight()));
+        System.out.printf(": %s x %s%n", finalImage.getWidth(), finalImage.getHeight());
     }
 
     private static BufferedImage resizeImage(BufferedImage image, Padding padding) {
@@ -173,8 +166,6 @@ public class BorderFix {
             graphics2.setRenderingHint(KEY_ANTIALIASING, VALUE_ANTIALIAS_ON);
             graphics2.setRenderingHint(KEY_RENDERING, VALUE_RENDER_QUALITY);
             graphics2.setRenderingHint(KEY_INTERPOLATION, VALUE_INTERPOLATION_BICUBIC);
-            //graphics2.setPaint(new Color(12, 128, 255));
-            //graphics2.fillRect(0, 0, copy.getWidth(), copy.getHeight());
             graphics2.drawImage(image, 0, 0, copy2.getWidth(), copy2.getHeight(),
                     0, image.getHeight() - padding.getBottom() - bottom, image.getWidth(), image.getHeight() - padding.getBottom(), null);
             graphics.drawImage(copy2, 0, image.getHeight() - padding.getBottom() - bottom, null);
