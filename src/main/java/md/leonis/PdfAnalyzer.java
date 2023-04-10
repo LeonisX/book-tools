@@ -3,15 +3,23 @@ package md.leonis;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDDocumentCatalog;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDResources;
+import org.apache.pdfbox.pdmodel.common.PDMetadata;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.graphics.PDXObject;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -196,32 +204,6 @@ public class PdfAnalyzer {
     }
 
     static SimpleDateFormat format = new SimpleDateFormat("EEE MMM d hh:mm:ss: yyyy");
-    // Date and Time Pattern
-    //Result
-    //"yyyy.MM.dd G 'at' HH:mm:ss z"
-    //2001.07.04 AD at 12:08:56 PDT
-    //"EEE, MMM d, ''yy"
-    //Wed, Jul 4, '01
-    //"h:mm a"
-    //12:08 PM
-    //"hh 'o''clock' a, zzzz"
-    //12 o'clock PM, Pacific Daylight Time
-    //"K:mm a, z"
-    //0:08 PM, PDT
-    //"yyyyy.MMMMM.dd GGG hh:mm aaa"
-    //02001.July.04 AD 12:08 PM
-    //"EEE, d MMM yyyy HH:mm:ss Z"
-    //Wed, 4 Jul 2001 12:08:56 -0700
-    //"yyMMddHHmmssZ"
-    //010704120856-0700
-    //"yyyy-MM-dd'T'HH:mm:ss.SSSZ"
-    //2001-07-04T12:08:56.235-0700
-    //"yyyy-MM-dd'T'HH:mm:ss.SSSXXX"
-    //2001-07-04T12:08:56.235-07:00
-    //"YYYY-'W'ww-u"
-    //2001-W27-3
-
-    // //CreationDate:   Thu Mar 16 02:50:06 2023
 
     public static void pdfBox(Path pdfPath, Path outputPath) throws IOException {
         //PDDocument document = Loader.loadPDF(new File("C:\\Users\\user\\Downloads\\Sanet.st.Retro_Gamer_UK_-_Issue_244,_2023.pdf"));
@@ -266,7 +248,7 @@ public class PdfAnalyzer {
         output.put("Producer", document.getDocumentInformation().getProducer());
         if (document.getDocumentInformation().getCreationDate() != null) {
             //TODO тут смещение
-            output.put("Created", format.format(document.getDocumentInformation().getCreationDate().getTime()));
+            output.put("Created", format.format(document.getDocumentInformation().getCreationDate().getTime())); // Thu Mar 16 02:50:06 2023
         }
         if (document.getDocumentInformation().getModificationDate() != null) {
             //TODO тут смещение
@@ -275,8 +257,41 @@ public class PdfAnalyzer {
         output.put("Trapped", document.getDocumentInformation().getTrapped());
         output.put("Linearized", document.getDocument().getLinearizedDictionary() != null);
 
-        //CreationDate:   Thu Mar 16 02:50:06 2023
-        //ModDate:        Thu Mar 16 02:50:06 2023
+        String text = null;
+        try {
+            PDDocumentCatalog catalog = document.getDocumentCatalog();
+            PDMetadata metadata = catalog.getMetadata();
+            if (metadata != null) {
+                InputStream xmlInputStream = metadata.exportXMPMetadata();
+
+                text = new BufferedReader(
+                        new InputStreamReader(xmlInputStream, StandardCharsets.UTF_8))
+                        .lines().map(s -> s.replace("xap:", "xmp:"))
+                        .map(s -> s.replace("xmp:", ""))
+                        .collect(Collectors.joining("\n"));
+
+                DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+                InputSource src = new InputSource();
+                src.setCharacterStream(new StringReader(text));
+                Document doc = builder.parse(src);
+                XPath xPath = XPathFactory.newInstance().newXPath();
+                NodeList nodeList = (NodeList) xPath.compile("//CreateDate").evaluate(doc, XPathConstants.NODESET);
+                if (nodeList.getLength() > 0) {
+                    output.put("XMP xmp:CreateDate", nodeList.item(0).getTextContent());
+                }
+                nodeList = (NodeList) xPath.compile("//MetadataDate").evaluate(doc, XPathConstants.NODESET);
+                if (nodeList.getLength() > 0) {
+                    output.put("XMP xmp:MetadataDate", nodeList.item(0).getTextContent());
+                }
+                nodeList = (NodeList) xPath.compile("//ModifyDate").evaluate(doc, XPathConstants.NODESET);
+                if (nodeList.getLength() > 0) {
+                    output.put("XMP xmp:ModifyDate", nodeList.item(0).getTextContent());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println(text);
+            e.printStackTrace();
+        }
 
         Files.write(outputPath.resolve("pdfbox-info.txt"), output.entrySet().stream().filter(e -> e.getValue() != null)
                 .map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.toList()));
