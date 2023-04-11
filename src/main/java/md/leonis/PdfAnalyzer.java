@@ -38,6 +38,7 @@ public class PdfAnalyzer {
         for (File pdfName : Objects.requireNonNull(PDF_PATH.toFile().listFiles((dir, name) -> name.endsWith(".pdf")))) {
             investigatePdfFile(pdfName.getName());
         }
+        //investigatePdfFile("2023-03-09 Retro Gamer-2.pdf");
     }
 
     private static void investigatePdfFile(String pdfName) throws IOException, InterruptedException {
@@ -46,20 +47,61 @@ public class PdfAnalyzer {
         Path outputPath = PDF_PATH.resolve(pdfDir);
         createDirectories(outputPath);
 
-        runCommands(pdfPath, outputPath);
+        pdfBoxInfo(pdfPath, outputPath);
 
-        pdfBox(pdfPath, outputPath);
+        runCommands(pdfPath, outputPath);
 
         //otherExperiments(pdfPath, outputPath);
     }
 
-    private static void runCommands(Path pdfPath, Path outputPath) throws IOException, InterruptedException {
+    private static void runCommands(Path sourcePdfPath, Path outputPath) throws IOException, InterruptedException {
+        Path pdfPath = sourcePdfPath.getParent().resolve("pdf.pdf");
+        Files.deleteIfExists(pdfPath);
+        Files.copy(sourcePdfPath, pdfPath);
         String pdf = arg(pdfPath);
 
+        // Info
+        runCommand(outputPath.resolve("info.txt"), arg(EXE_PATH + "pdfinfo.exe"), pdf);
+        runCommand(outputPath.resolve("cpdf-info.txt"), arg(EXE_PATH + "cpdf.exe"), "-info", pdf);
+        runCommand(outputPath.resolve("pdfcpu-info.txt"), arg(EXE_PATH + "pdfcpu.exe"), "info", pdf);
+        runCommand(outputPath.resolve("pdfcpu-validate.txt"), arg(EXE_PATH + "pdfcpu.exe"), "validate", pdf);
+
+        runCommand(outputPath.resolve("cpdf-metadata.txt"), arg(EXE_PATH + "cpdf.exe"), "-print-metadata", pdf);
+        runCommand(outputPath.resolve("cpdf-page-labels.txt"), arg(EXE_PATH + "cpdf.exe"), "-print-page-labels", pdf);
+        runCommand(outputPath.resolve("cpdf-annotations.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-annotations", pdf);
+        runCommand(outputPath.resolve("cpdf-annotations.json"), arg(EXE_PATH + "cpdf.exe"), "-list-annotations-json", pdf);
+        runCommand(outputPath.resolve("cpdf-page-info.txt"), arg(EXE_PATH + "cpdf.exe"), "-page-info", pdf);
+        runCommand(outputPath.resolve("cpdf-pages.txt"), arg(EXE_PATH + "cpdf.exe"), "-pages", pdf);
+        runCommand(outputPath.resolve("cpdf-bookmarks.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-bookmarks", pdf);
+        runCommand(outputPath.resolve("cpdf-bookmarks.json"), arg(EXE_PATH + "cpdf.exe"), "-list-bookmarks-json", pdf);
+        runCommand(outputPath.resolve("pdfcpu-annotations.txt"), arg(EXE_PATH + "pdfcpu.exe"), "annotations", "list", pdf);
+        runCommand(outputPath.resolve("pdfcpu-box.txt"), arg(EXE_PATH + "pdfcpu.exe"), "box", "list", pdf);
+        runCommand(outputPath.resolve("pdfcpu-permissions.txt"), arg(EXE_PATH + "pdfcpu.exe"), "permissions", "list", pdf);
+        runCommand(outputPath.resolve("pdfcpu-form.txt"), arg(EXE_PATH + "pdfcpu.exe"), "form", "list", pdf);
+        runCommand(outputPath.resolve("pdfcpu-keywords.txt"), arg(EXE_PATH + "pdfcpu.exe"), "keywords", "list", pdf);
+        runCommand(outputPath.resolve("pdfcpu-portfolio.txt"), arg(EXE_PATH + "pdfcpu.exe"), "portfolio", "list", pdf);
+        runCommand(outputPath.resolve("pdfcpu-properties.txt"), arg(EXE_PATH + "pdfcpu.exe"), "properties", "list", pdf);
+
+        createDirectories(outputPath.resolve("pdfcpu-content"));
+        createDirectories(outputPath.resolve("pdfcpu-meta"));
+        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "extract", "-mode", "content", pdf, arg(outputPath.resolve("pdfcpu-content")));
+        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "extract", "-mode", "meta", pdf, arg(outputPath.resolve("pdfcpu-meta")));
+
+        // List fonts
+        runCommand(outputPath.resolve("fonts.txt"), arg(EXE_PATH + "pdffonts.exe"), "-loc", pdf);
+        runCommand(outputPath.resolve("cpdf-fonts.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-fonts", pdf);
+
+        // Attachments
         runCommand(arg(EXE_PATH + "pdfdetach.exe"), "-saveall", "-o", arg(outputPath.resolve("pdfdetach")), pdf);
         runCommand(arg(EXE_PATH + "pdfdetach.exe"), "-list", "-o", arg(outputPath.resolve("embedded.txt")), pdf);
-        runCommand(outputPath.resolve("fonts.txt"), arg(EXE_PATH + "pdffonts.exe"), "-loc", pdf);
+        runCommand(outputPath.resolve("qpdf-attachments.txt"), arg(EXE_PATH + "qpdf.exe"), "--list-attachments", pdf);
+        Files.write(outputPath.resolve("qpdf-attachments.txt"), Files.lines(outputPath.resolve("qpdf-attachments.txt")).map(s -> s.replace(pdfPath.toAbsolutePath() + " has ", "")).collect(Collectors.toList()));
 
+        createDirectories(outputPath.resolve("pdfcpu-attachments"));
+        runCommand(outputPath.resolve("pdfcpu-attachments.txt"), arg(EXE_PATH + "pdfcpu.exe"), "attachments", "list", pdf);
+        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "attachments", "extract", pdf, arg(outputPath.resolve("pdfcpu-attachments")));
+
+        // Images
         Path imagesPath = outputPath.resolve("images");
         createDirectories(imagesPath);
         Path rawImagesPath = outputPath.resolve("raw-images");
@@ -69,53 +111,45 @@ public class PdfAnalyzer {
         Path finalImagesPath = imagesPath;
         Files.write(outputPath.resolve("images.txt"), Files.lines(outputPath.resolve("images.txt")).map(s -> s.replace(finalImagesPath.resolve("img").toAbsolutePath().toString(), "img")).collect(Collectors.toList()));
 
-        runCommand(outputPath.resolve("info.txt"), arg(EXE_PATH + "pdfinfo.exe"), pdf);
-
-        Path htmlPath = outputPath.resolve("html");
-        deleteDirectoryStream(htmlPath);
-        runCommand(arg(EXE_PATH + "pdftohtml.exe"), /*"-embedbackground", "-embedfonts", */"-table", pdf, arg(htmlPath));
-
-        runCommand(arg(EXE_PATH + "pdftotext.exe"), "-layout", pdf, arg(outputPath.resolve("layout-text.txt")));
-        runCommand(arg(EXE_PATH + "pdftotext.exe"), pdf, arg(outputPath.resolve("simple-text.txt")));
-
-        runCommand(arg(EXE_PATH + "cpdf.exe"), "-draft", pdf, "AND", "-clean", "-o", arg(outputPath.resolve("draft.pdf")));
-        runCommand(arg(EXE_PATH + "pdftops.exe"), arg(outputPath.resolve("draft.pdf")), arg(outputPath.resolve("draft.ps")));
-
-        runCommand(outputPath.resolve("cpdf-fonts.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-fonts", pdf);
-
-        runCommand(outputPath.resolve("cpdf-info.txt"), arg(EXE_PATH + "cpdf.exe"), "-info", pdf);
-
-        runCommand(outputPath.resolve("cpdf-metadata.txt"), arg(EXE_PATH + "cpdf.exe"), "-print-metadata", pdf);
-
-        runCommand(outputPath.resolve("cpdf-page-labels.txt"), arg(EXE_PATH + "cpdf.exe"), "-print-page-labels", pdf);
-
-        runCommand(outputPath.resolve("cpdf-annotations.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-annotations", pdf);
-        runCommand(outputPath.resolve("cpdf-annotations.json"), arg(EXE_PATH + "cpdf.exe"), "-list-annotations-json", pdf);
-
-        runCommand(outputPath.resolve("cpdf-page-info.txt"), arg(EXE_PATH + "cpdf.exe"), "-page-info", pdf);
-        runCommand(outputPath.resolve("cpdf-pages.txt"), arg(EXE_PATH + "cpdf.exe"), "-pages", pdf);
-
-        runCommand(outputPath.resolve("cpdf-bookmarks.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-bookmarks", pdf);
-        runCommand(outputPath.resolve("cpdf-bookmarks.json"), arg(EXE_PATH + "cpdf.exe"), "-list-bookmarks-json", pdf);
-
         imagesPath = outputPath.resolve("cpdf-images");
         createDirectories(imagesPath);
         runCommand(arg(EXE_PATH + "cpdf.exe"), "-extract-images", pdf, "-im", IM_PATH, "-o", arg(imagesPath.resolve("img")));
-
-        runCommand(outputPath.resolve("qpdf-attachments.txt"), arg(EXE_PATH + "qpdf.exe"), "--list-attachments", pdf);
-        Files.write(outputPath.resolve("qpdf-attachments.txt"), Files.lines(outputPath.resolve("qpdf-attachments.txt")).map(s -> s.replace(pdfPath.toAbsolutePath() + " has ", "")).collect(Collectors.toList()));
-
-        runCommand(arg(EXE_PATH + "cpdf.exe"), "-output-json", arg(outputPath.resolve("draft.pdf")), "-o", arg(outputPath.resolve("cpdf.json")));
 
         // это лишнее
         /*imagesPath = outputPath.resolve("pdfbox-images");
         createDirectories(imagesPath);
         runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:images", "-noColorConvert", "-useDirectJPEG", arg("-i=" + pdfPath.toAbsolutePath()), arg("-prefix=" + outputPath.resolve(imagesPath).resolve("img")));*/
 
+        imagesPath = outputPath.resolve("pdfcpu-images");
+        createDirectories(imagesPath);
+        runCommand(outputPath.resolve("pdfcpu-images.txt"), arg(EXE_PATH + "pdfcpu.exe"), "images", "list", pdf);
+        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "extract", "-mode", "image", pdf, arg(imagesPath));
+
+        // Html, fonts
+        Path htmlPath = outputPath.resolve("html");
+        deleteDirectoryStream(htmlPath);
+        runCommand(arg(EXE_PATH + "pdftohtml.exe"), /*"-embedbackground", "-embedfonts", */"-table", pdf, arg(htmlPath));
+        Path fontsPath = outputPath.resolve("pdfcpu-fonts");
+        createDirectories(fontsPath);
+        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "extract", "-mode", "font", pdf, arg(fontsPath));
+
+        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "optimize", "-stats", arg(outputPath.resolve("stats.csv")), pdf, arg(outputPath.resolve("pdfcpu-optimized.pdf")));
+
+        // Text
+        runCommand(arg(EXE_PATH + "pdftotext.exe"), "-layout", pdf, arg(outputPath.resolve("layout-text.txt")));
+        runCommand(arg(EXE_PATH + "pdftotext.exe"), pdf, arg(outputPath.resolve("simple-text.txt")));
+
+        // PostScript, structure
+        runCommand(arg(EXE_PATH + "cpdf.exe"), "-draft", pdf, "AND", "-clean", "-o", arg(outputPath.resolve("draft.pdf")));
+        runCommand(arg(EXE_PATH + "pdftops.exe"), arg(outputPath.resolve("draft.pdf")), arg(outputPath.resolve("draft.ps")));
+        runCommand(arg(EXE_PATH + "cpdf.exe"), "-output-json", arg(outputPath.resolve("draft.pdf")), "-o", arg(outputPath.resolve("cpdf.json")));
+
         runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:text", "-html", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdfbox.html")));
         runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:text", "-rotationMagic", "-sort", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdfbox.txt")));
         runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:fdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdfbox.fdf")));
         runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:xfdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdfbox.xfdf")));
+
+        // Render
 
         // это лишнее
         /*imagesPath = outputPath.resolve("pdfbox-render");
@@ -132,11 +166,40 @@ public class PdfAnalyzer {
         Linearize the ﬁle in.pdf, writing to out.pdf.
         Causes generation of a linearized (web-optimized) output file.
 
+
+
+--remove-restrictions
+--qdf
+--no-original-object-ids
+--coalesce-contents
+
+--check
+--show-linearization
+--show-xref
+qpdf.exe --show-pages --with-images "Sanet.st.Retro_Gamer_UK_-_Issue_244,_2023.pdf"
+--list-attachments
+
+qpdf --decrypt --object-streams=disable in.pdf out.pdf
+qpdf --json-output out.pdf out.json
+
+
+--deterministic-id
+
+--min-version=version
+
+--externalize-inline-images
+
+--remove-unreferenced-resources=parameter
+--preserve-unreferenced-resources
+
+
                 --compress-streams=[y
                 --recompress-flate
                 --compression-level=level
         When writing new streams that are compressed with /FlateDecode, use the specified compression level. The
         value of level should be a number from 1 to 9*/
+
+        Files.delete(pdfPath);
     }
 
     @SuppressWarnings("all")
@@ -170,7 +233,7 @@ public class PdfAnalyzer {
             System.out.println("Out message: " + errBR.lines().collect(Collectors.joining("\n")));
             System.out.println("Error message: " + outBR.lines().collect(Collectors.joining("\n")));
             System.out.println(Arrays.asList(args));
-            System.exit(-1);
+            //System.exit(-1);
         }
     }
 
@@ -188,7 +251,7 @@ public class PdfAnalyzer {
             System.out.println("Out message: " + errBR.lines().collect(Collectors.joining("\n")));
             System.out.println("Error message: " + outBR.lines().collect(Collectors.joining("\n")));
             System.out.println(Arrays.asList(args));
-            System.exit(-1);
+            //System.exit(-1);
         }
     }
     
@@ -205,7 +268,7 @@ public class PdfAnalyzer {
 
     static SimpleDateFormat format = new SimpleDateFormat("EEE MMM d hh:mm:ss: yyyy");
 
-    public static void pdfBox(Path pdfPath, Path outputPath) throws IOException {
+    public static void pdfBoxInfo(Path pdfPath, Path outputPath) throws IOException {
         //PDDocument document = Loader.loadPDF(new File("C:\\Users\\user\\Downloads\\Sanet.st.Retro_Gamer_UK_-_Issue_244,_2023.pdf"));
         PDDocument document = Loader.loadPDF(pdfPath.toFile());
 
@@ -218,7 +281,7 @@ public class PdfAnalyzer {
         AccessPermission accessPermission = document.getCurrentAccessPermission();
         List<String> permissions = new ArrayList<>();
         if (accessPermission.isOwnerPermission()) {
-            permissions.add("Owner permissions (no restrictions)");
+            permissions.add("Full access");
         } else {
             addIfTrue(permissions, accessPermission.canAssembleDocument(), "AssembleDocument");
             addIfTrue(permissions, accessPermission.canExtractContent(), "ExtractContent");
@@ -235,7 +298,7 @@ public class PdfAnalyzer {
         output.put("Permissions", String.join(", ", permissions));
 
         if (document.getNumberOfPages() > 0) {
-            output.put("Page size", String.format("%s x %s pts", document.getPage(0).getCropBox().getWidth(), document.getPage(0).getCropBox().getHeight()));
+            output.put("Page size", String.format("%s x %s pts", document.getPage(0).getMediaBox().getWidth(), document.getPage(0).getCropBox().getHeight()));
         }
         output.put("Page layout", document.getDocumentCatalog().getPageLayout().stringValue());
         output.put("Page mode", document.getDocumentCatalog().getPageMode().stringValue());

@@ -1,3 +1,23 @@
+# PDF Analyzer
+
+Утилита для получения всевозможной информации из PDF файла. 
+
+Все извлечённые данные каждого PDF документа (а так же картинки и прочее) складываются в отдельные каталоги,
+для их последующего сравнения в WinMerge.
+
+Основное назначение - сравнение версий журналов с разных сайтов и выбор документа наилучшего качества.
+
+Так же можно использовать для извлечения ресурсов из PDF.
+
+## Используемые инструменты:
+
+* [XPDF](https://www.xpdfreader.com/download.html)
+* [CPDF](https://community.coherentpdf.com/)
+* [QPDF](https://qpdf.readthedocs.io/en/stable/download.html)
+* [PdfBox](https://pdfbox.apache.org/)
+* [pdfcpu](https://pdfcpu.io)
+* [ImageMagick](https://imagemagick.org/script/download.php)
+
 # book-tools
 
 Утилиты для обработки отсканированных страниц книги
