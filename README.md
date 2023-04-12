@@ -18,6 +18,12 @@
 * [pdfcpu](https://pdfcpu.io)
 * [ImageMagick](https://imagemagick.org/script/download.php)
 
+### Не изученные:
+
+* [Poppler](https://github.com/oschwartz10612/poppler-windows) - альтернатива XPDF. [Вики](https://en.wikipedia.org/wiki/Poppler_(software))
+* [mutool](https://mupdf.com/docs/mutool.html) - достаточно бестолковая утилита.
+* [PDFtk Server](https://www.pdflabs.com/tools/pdftk-server/)
+
 # book-tools
 
 Утилиты для обработки отсканированных страниц книги
