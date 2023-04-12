@@ -34,7 +34,6 @@ public class PdfAnalyzer {
     private static final String IM_PATH = "C:\\Program Files\\ImageMagick-7.1.1-Q16-HDRI\\magick.exe";
     private static final String PDFBOX = "pdfbox-app-3.0.0-alpha3.jar";
 
-    //todo найти где криво вытаскивается русский текст и поиграться с кодировками
     public static void main(String[] args) throws IOException, InterruptedException {
         for (File pdfName : Objects.requireNonNull(PDF_PATH.toFile().listFiles((dir, name) -> name.endsWith(".pdf")))) {
             //validatePdfFile(pdfName.getName()); //todo parallel execution, это валидация, стоит выполнять раз для всей пачки
@@ -206,6 +205,17 @@ public class PdfAnalyzer {
         /*imagesPath = outputPath.resolve("pdfbox-render");
         createDirectories(imagesPath);
         runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "render", "-format=jpg", "-i=" + pdf, arg("-prefix=" + outputPath.resolve(imagesPath).resolve("img")));*/
+
+        // mutool draw [options] file [pages]
+        // На самом деле, mutool - достаточно бестолковая утилита.
+        // Позволяет извлекать все шрифты, но в текущий каталог и вместе с картинками
+        // Очень мало настроек а те что есть - бестолковые.
+        // clean раздувает файл ещё больше.
+        // Преобразование в PDF, XPS, CBZ, unprotected EPUB, FB2, etc.
+        // mutool trace - показывает как рендерится страница
+        // так же есть другие команды https://mupdf.com/docs/mutool.html
+
+
 
         Files.delete(pdfPath);
 
