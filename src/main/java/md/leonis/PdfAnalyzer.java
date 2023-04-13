@@ -30,10 +30,23 @@ import java.util.stream.Collectors;
 public class PdfAnalyzer {
 
     private static final String EXE_PATH = "C:\\Users\\user\\Downloads\\commands\\";
-    private static final Path PDF_PATH = Paths.get("C:\\Users\\user\\Downloads");
-    private static final String IM_PATH = "C:\\Program Files\\ImageMagick-7.1.1-Q16-HDRI\\magick.exe";
-    private static final String PDFBOX = "pdfbox-app-3.0.0-alpha3.jar";
 
+    private static final String CPDF = arg(Paths.get(EXE_PATH).resolve("cpdf").resolve("cpdf.exe"));
+    private static final String QPDF = arg(Paths.get(EXE_PATH).resolve("qpdf").resolve("qpdf.exe"));
+    private static final String PDFCPU = arg(Paths.get(EXE_PATH).resolve("pdfcpu").resolve("pdfcpu.exe"));
+    private static final String PDFBOX = arg(Paths.get(EXE_PATH).resolve("pdfbox").resolve("pdfbox-app-3.0.0-alpha3.jar"));
+
+    private static final String PDFDETACH = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdfdetach.exe"));
+    private static final String PDFFONTS = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdffonts.exe"));
+    private static final String PDFIMAGES = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdfimages.exe"));
+    private static final String PDFINFO = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdfinfo.exe"));
+    private static final String PDFTOHTML = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdftohtml.exe"));
+    private static final String PDFTOPS = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdftops.exe"));
+    private static final String PDFTOTEXT = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdftotext.exe"));
+
+    private static final Path PDF_PATH = Paths.get("C:\\Users\\user\\Downloads\\commands\\");
+    private static final String IM_PATH = "C:\\Program Files\\ImageMagick-7.1.1-Q16-HDRI\\magick.exe";
+    
     public static void main(String[] args) throws IOException, InterruptedException {
         for (File pdfName : Objects.requireNonNull(PDF_PATH.toFile().listFiles((dir, name) -> name.endsWith(".pdf")))) {
             //validatePdfFile(pdfName.getName()); //todo parallel execution, это валидация, стоит выполнять раз для всей пачки
@@ -58,8 +71,8 @@ public class PdfAnalyzer {
         String pdfFile = pdfName.substring(0, pdfName.length() - 4);
         String pdfCpu = pdfFile + "-pdfcpu.txt";
         String qpdf = pdfFile + "-qpdf.txt";
-        runCommand(outputPath.resolve(pdfCpu), arg(EXE_PATH + "pdfcpu.exe"), "validate", pdf);
-        runCommand(outputPath.resolve(qpdf), arg(EXE_PATH + "qpdf.exe"), "--check", "--with-images", pdf);
+        runCommand(outputPath.resolve(pdfCpu), PDFCPU, "validate", pdf);
+        runCommand(outputPath.resolve(qpdf), QPDF, "--check", "--with-images", pdf);
 
         sanitizeFile(outputPath.resolve(pdfCpu), pdfPath);
         sanitizeFile(outputPath.resolve(qpdf), pdfPath);
@@ -72,17 +85,17 @@ public class PdfAnalyzer {
         String pdf = arg(pdfPath);
         String pdfFile = pdfName.substring(0, pdfName.length() - 4);
 
-        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "optimize", "-stats", arg(outputPath.resolve(pdfFile + "-stats-pdfcpu.csv")), pdf, arg(outputPath.resolve(pdfFile + "-optimized-pdfcpu.pdf")));
+        runCommand(PDFCPU, "optimize", "-stats", arg(outputPath.resolve(pdfFile + "-stats-pdfcpu.csv")), pdf, arg(outputPath.resolve(pdfFile + "-optimized-pdfcpu.pdf")));
 
-        runCommand(arg(EXE_PATH + "cpdf.exe"), "-compress", pdf, "-o", arg(outputPath.resolve(pdfFile + "-compressed-cpdf.pdf")));
-        runCommand(arg(EXE_PATH + "cpdf.exe"), "-squeeze", pdf, "-o", arg(outputPath.resolve(pdfFile + "-squeezeed-cpdf.pdf")));
+        runCommand(CPDF, "-compress", pdf, "-o", arg(outputPath.resolve(pdfFile + "-compressed-cpdf.pdf")));
+        runCommand(CPDF, "-squeeze", pdf, "-o", arg(outputPath.resolve(pdfFile + "-squeezeed-cpdf.pdf")));
 
-        runCommand(arg(EXE_PATH + "qpdf.exe"), "--stream-data=compress", "--recompress-flate", "--compression-level=9",
+        runCommand(QPDF, "--stream-data=compress", "--recompress-flate", "--compression-level=9",
                 "--normalize-content=n", "--object-streams=generate", "--optimize-images", "--oi-min-width=0", "--oi-min-height=0",
                 "--oi-min-area=0", "--min-version=1.7", pdf, arg(outputPath.resolve(pdfFile + "-compressed-qpdf.qdf")));
 
         // --externalize-inline-images -ii-min-bytes=0
-        runCommand(arg(EXE_PATH + "qpdf.exe"), "--linearize", pdf, arg(outputPath.resolve(pdfFile + "-linearized-qpdf.qdf")));
+        runCommand(QPDF, "--linearize", pdf, arg(outputPath.resolve(pdfFile + "-linearized-qpdf.qdf")));
     }
 
     private static void investigatePdfFile(Path inPdfPath, String pdfName) throws IOException, InterruptedException {
@@ -105,98 +118,98 @@ public class PdfAnalyzer {
         String pdf = arg(pdfPath);
 
         // Info
-        runCommand(outputPath.resolve("info.txt"), arg(EXE_PATH + "pdfinfo.exe"), pdf);
-        runCommand(outputPath.resolve("info-cpdf.txt"), arg(EXE_PATH + "cpdf.exe"), "-info", pdf);
-        runCommand(outputPath.resolve("info-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "info", pdf);
+        runCommand(outputPath.resolve("info.txt"), PDFINFO, pdf);
+        runCommand(outputPath.resolve("info-cpdf.txt"), CPDF, "-info", pdf);
+        runCommand(outputPath.resolve("info-pdfcpu.txt"), PDFCPU, "info", pdf);
 
-        runCommand(outputPath.resolve("metadata-cpdf.txt"), arg(EXE_PATH + "cpdf.exe"), "-print-metadata", pdf);
-        //runCommand(outputPath.resolve("annotations-cpdf.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-annotations", pdf);
-        //runCommand(outputPath.resolve("annotations-cpdf.json"), arg(EXE_PATH + "cpdf.exe"), "-list-annotations-json", pdf);
-        runCommand(outputPath.resolve("page-info-cpdf.txt"), arg(EXE_PATH + "cpdf.exe"), "-page-info", pdf);
-        //runCommand(outputPath.resolve("pages-cpdf.txt"), arg(EXE_PATH + "cpdf.exe"), "-pages", pdf);
-        //runCommand(outputPath.resolve("page-labels-cpdf.txt"), arg(EXE_PATH + "cpdf.exe"), "-print-page-labels", pdf);
-        runCommand(outputPath.resolve("bookmarks-cpdf.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-bookmarks", pdf);
-        runCommand(outputPath.resolve("bookmarks-cpdf.json"), arg(EXE_PATH + "cpdf.exe"), "-list-bookmarks-json", pdf);
-        runCommand(outputPath.resolve("annotations-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "annotations", "list", pdf);
-        runCommand(outputPath.resolve("box-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "box", "list", pdf);
-        //runCommand(outputPath.resolve("permissions-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "permissions", "list", pdf);
-        runCommand(outputPath.resolve("form-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "form", "list", pdf);
-        runCommand(outputPath.resolve("keywords-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "keywords", "list", pdf);
-        runCommand(outputPath.resolve("portfolio-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "portfolio", "list", pdf);
-        runCommand(outputPath.resolve("properties-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "properties", "list", pdf);
+        runCommand(outputPath.resolve("metadata-cpdf.txt"), CPDF, "-print-metadata", pdf);
+        //runCommand(outputPath.resolve("annotations-cpdf.txt"), CPDF, "-list-annotations", pdf);
+        //runCommand(outputPath.resolve("annotations-cpdf.json"), CPDF, "-list-annotations-json", pdf);
+        runCommand(outputPath.resolve("page-info-cpdf.txt"), CPDF, "-page-info", pdf);
+        //runCommand(outputPath.resolve("pages-cpdf.txt"), CPDF, "-pages", pdf);
+        //runCommand(outputPath.resolve("page-labels-cpdf.txt"), CPDF, "-print-page-labels", pdf);
+        runCommand(outputPath.resolve("bookmarks-cpdf.txt"), CPDF, "-list-bookmarks", pdf);
+        runCommand(outputPath.resolve("bookmarks-cpdf.json"), CPDF, "-list-bookmarks-json", pdf);
+        runCommand(outputPath.resolve("annotations-pdfcpu.txt"), PDFCPU, "annotations", "list", pdf);
+        runCommand(outputPath.resolve("box-pdfcpu.txt"), PDFCPU, "box", "list", pdf);
+        //runCommand(outputPath.resolve("permissions-pdfcpu.txt"), PDFCPU, "permissions", "list", pdf);
+        runCommand(outputPath.resolve("form-pdfcpu.txt"), PDFCPU, "form", "list", pdf);
+        runCommand(outputPath.resolve("keywords-pdfcpu.txt"), PDFCPU, "keywords", "list", pdf);
+        runCommand(outputPath.resolve("portfolio-pdfcpu.txt"), PDFCPU, "portfolio", "list", pdf);
+        runCommand(outputPath.resolve("properties-pdfcpu.txt"), PDFCPU, "properties", "list", pdf);
 
         sanitizeFile(outputPath.resolve("box-pdfcpu.txt"), pdfPath);
 
         createDirectories(outputPath.resolve("content-pdfcpu"));
         createDirectories(outputPath.resolve("meta-pdfcpu"));
-        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "extract", "-mode", "content", pdf, arg(outputPath.resolve("content-pdfcpu")));
-        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "extract", "-mode", "meta", pdf, arg(outputPath.resolve("meta-pdfcpu")));
+        runCommand(PDFCPU, "extract", "-mode", "content", pdf, arg(outputPath.resolve("content-pdfcpu")));
+        runCommand(PDFCPU, "extract", "-mode", "meta", pdf, arg(outputPath.resolve("meta-pdfcpu")));
 
-        runCommand(outputPath.resolve("xrefs-qpdf.txt"), arg(EXE_PATH + "qpdf.exe"), "--show-xref", pdf);
+        runCommand(outputPath.resolve("xrefs-qpdf.txt"), QPDF, "--show-xref", pdf);
 
         // List fonts
-        runCommand(outputPath.resolve("fonts.txt"), arg(EXE_PATH + "pdffonts.exe"), "-loc", pdf);
-        runCommand(outputPath.resolve("fonts-cpdf.txt"), arg(EXE_PATH + "cpdf.exe"), "-list-fonts", pdf);
+        runCommand(outputPath.resolve("fonts.txt"), PDFFONTS, "-loc", pdf);
+        runCommand(outputPath.resolve("fonts-cpdf.txt"), CPDF, "-list-fonts", pdf);
 
         // Attachments
-        runCommand(arg(EXE_PATH + "pdfdetach.exe"), "-saveall", "-o", arg(outputPath.resolve("pdfdetach")), pdf);
-        runCommand(arg(EXE_PATH + "pdfdetach.exe"), "-list", "-o", arg(outputPath.resolve("embedded.txt")), pdf);
-        runCommand(outputPath.resolve("attachments-qpdf.txt"), arg(EXE_PATH + "qpdf.exe"), "--list-attachments", pdf);
+        runCommand(PDFDETACH, "-saveall", "-o", arg(outputPath.resolve("pdfdetach")), pdf);
+        runCommand(PDFDETACH, "-list", "-o", arg(outputPath.resolve("embedded.txt")), pdf);
+        runCommand(outputPath.resolve("attachments-qpdf.txt"), QPDF, "--list-attachments", pdf);
         sanitizeFile(outputPath.resolve("attachments-qpdf.txt"), pdfPath);
 
         createDirectories(outputPath.resolve("attachments-pdfcpu"));
-        runCommand(outputPath.resolve("attachments-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "attachments", "list", pdf);
-        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "attachments", "extract", pdf, arg(outputPath.resolve("attachments-pdfcpu")));
+        runCommand(outputPath.resolve("attachments-pdfcpu.txt"), PDFCPU, "attachments", "list", pdf);
+        runCommand(PDFCPU, "attachments", "extract", pdf, arg(outputPath.resolve("attachments-pdfcpu")));
 
         // Images
         Path imagesPath = outputPath.resolve("images");
         createDirectories(imagesPath);
         Path rawImagesPath = outputPath.resolve("images-raw");
         createDirectories(rawImagesPath);
-        runCommand(outputPath.resolve("images.txt"), arg(EXE_PATH + "pdfimages.exe"), "-j", "-list", pdf, arg(imagesPath.resolve("img")));
-        runCommand(arg(EXE_PATH + "pdfimages.exe"), "-raw", pdf, arg(rawImagesPath.resolve("img")));
+        runCommand(outputPath.resolve("images.txt"), PDFIMAGES, "-j", "-list", pdf, arg(imagesPath.resolve("img")));
+        runCommand(PDFIMAGES, "-raw", pdf, arg(rawImagesPath.resolve("img")));
         sanitizeFile(outputPath.resolve("images.txt"), imagesPath);
 
         imagesPath = outputPath.resolve("images-cpdf");
         createDirectories(imagesPath);
-        runCommand(arg(EXE_PATH + "cpdf.exe"), "-extract-images", pdf, "-im", IM_PATH, "-o", arg(imagesPath.resolve("img")));
+        runCommand(CPDF, "-extract-images", pdf, "-im", IM_PATH, "-o", arg(imagesPath.resolve("img")));
 
         // это лишнее
         /*imagesPath = outputPath.resolve("images-pdfbox");
         createDirectories(imagesPath);
-        runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:images", "-noColorConvert", "-useDirectJPEG", arg("-i=" + pdfPath.toAbsolutePath()), arg("-prefix=" + outputPath.resolve(imagesPath).resolve("img")));*/
+        runCommand("java", "-jar", PDFBOX, "export:images", "-noColorConvert", "-useDirectJPEG", arg("-i=" + pdfPath.toAbsolutePath()), arg("-prefix=" + outputPath.resolve(imagesPath).resolve("img")));*/
 
         imagesPath = outputPath.resolve("images-pdfcpu");
         createDirectories(imagesPath);
-        runCommand(outputPath.resolve("images-pdfcpu.txt"), arg(EXE_PATH + "pdfcpu.exe"), "images", "list", pdf);
-        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "extract", "-mode", "image", pdf, arg(imagesPath));
+        runCommand(outputPath.resolve("images-pdfcpu.txt"), PDFCPU, "images", "list", pdf);
+        runCommand(PDFCPU, "extract", "-mode", "image", pdf, arg(imagesPath));
         sanitizeFile(outputPath.resolve("images-pdfcpu.txt"), pdfPath);
 
         // Html, fonts
         Path htmlPath = outputPath.resolve("html");
         deleteDirectoryStream(htmlPath);
-        runCommand(arg(EXE_PATH + "pdftohtml.exe"), /*"-embedbackground", "-embedfonts", */"-table", pdf, arg(htmlPath));
+        runCommand(PDFTOHTML, /*"-embedbackground", "-embedfonts", */"-table", pdf, arg(htmlPath));
         Path fontsPath = outputPath.resolve("fonts-pdfcpu");
         createDirectories(fontsPath);
-        runCommand(arg(EXE_PATH + "pdfcpu.exe"), "extract", "-mode", "font", pdf, arg(fontsPath));
+        runCommand(PDFCPU, "extract", "-mode", "font", pdf, arg(fontsPath));
 
         // Text
-        runCommand(arg(EXE_PATH + "pdftotext.exe"), "-layout", "-enc", "UTF-8", pdf, arg(outputPath.resolve("text-layout.txt")));
-        runCommand(arg(EXE_PATH + "pdftotext.exe"), "-enc", "UTF-8", pdf, arg(outputPath.resolve("text-simple.txt")));
+        runCommand(PDFTOTEXT, "-layout", "-enc", "UTF-8", pdf, arg(outputPath.resolve("text-layout.txt")));
+        runCommand(PDFTOTEXT, "-enc", "UTF-8", pdf, arg(outputPath.resolve("text-simple.txt")));
 
         // PostScript, structure
-        runCommand(arg(EXE_PATH + "cpdf.exe"), "-draft", pdf, "AND", "-clean", "-o", arg(outputPath.resolve("pdf-draft.pdf")));
-        runCommand(arg(EXE_PATH + "pdftops.exe"), arg(outputPath.resolve("pdf-draft.pdf")), arg(outputPath.resolve("pdf-draft.ps")));
-        runCommand(arg(EXE_PATH + "cpdf.exe"), "-output-json", arg(outputPath.resolve("pdf-draft.pdf")), "-o", arg(outputPath.resolve("pdf-cpdf.json")));
+        runCommand(CPDF, "-draft", pdf, "AND", "-clean", "-o", arg(outputPath.resolve("pdf-draft.pdf")));
+        runCommand(PDFTOPS, arg(outputPath.resolve("pdf-draft.pdf")), arg(outputPath.resolve("pdf-draft.ps")));
+        runCommand(CPDF, "-output-json", arg(outputPath.resolve("pdf-draft.pdf")), "-o", arg(outputPath.resolve("pdf-cpdf.json")));
 
-        runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:text", "-html", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("html-pdfbox.html")));
-        runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:text", "-rotationMagic", "-sort", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("text-pdfbox.txt")));
-        runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:fdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdf.fdf")));
-        runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "export:xfdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdf.xfdf")));
+        runCommand("java", "-jar", PDFBOX, "export:text", "-html", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("html-pdfbox.html")));
+        runCommand("java", "-jar", PDFBOX, "export:text", "-rotationMagic", "-sort", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("text-pdfbox.txt")));
+        runCommand("java", "-jar", PDFBOX, "export:fdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdf.fdf")));
+        runCommand("java", "-jar", PDFBOX, "export:xfdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdf.xfdf")));
 
-        runCommand(arg(EXE_PATH + "qpdf.exe"), "--remove-restrictions", "--decrypt", "--object-streams=disable",
+        runCommand(QPDF, "--remove-restrictions", "--decrypt", "--object-streams=disable",
                 "--deterministic-id", "--qdf", "--no-original-object-ids", "--coalesce-contents", "--normalize-content=y", pdf, arg(outputPath.resolve("pdf.qdf")));
-        runCommand(arg(EXE_PATH + "qpdf.exe"), "--remove-restrictions", "--decrypt", "--object-streams=disable",
+        runCommand(QPDF, "--remove-restrictions", "--decrypt", "--object-streams=disable",
                 "--deterministic-id", "--json-output", "--no-original-object-ids", "--coalesce-contents", "--normalize-content=y", pdf, arg(outputPath.resolve("pdf.json")));
 
         // Render
@@ -204,7 +217,7 @@ public class PdfAnalyzer {
         // это лишнее
         /*imagesPath = outputPath.resolve("pdfbox-render");
         createDirectories(imagesPath);
-        runCommand("java", "-jar", arg(EXE_PATH + PDFBOX), "render", "-format=jpg", "-i=" + pdf, arg("-prefix=" + outputPath.resolve(imagesPath).resolve("img")));*/
+        runCommand("java", "-jar", PDFBOX, "render", "-format=jpg", "-i=" + pdf, arg("-prefix=" + outputPath.resolve(imagesPath).resolve("img")));*/
 
         // mutool draw [options] file [pages]
         // На самом деле, mutool - достаточно бестолковая утилита.
