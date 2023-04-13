@@ -1,0 +1,1 @@
+java -jar pdfbox-app-3.0.0-alpha3.jar debug Sanet.st.Retro_Gamer_UK_-_Issue_244,_2023ow.pdf 

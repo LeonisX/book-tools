@@ -29,20 +29,20 @@ import java.util.stream.Collectors;
 
 public class PdfAnalyzer {
 
-    private static final String EXE_PATH = "C:\\Users\\user\\Downloads\\commands\\";
+    private static final Path EXE_PATH = Paths.get(".").resolve("commands");
 
-    private static final String CPDF = arg(Paths.get(EXE_PATH).resolve("cpdf").resolve("cpdf.exe"));
-    private static final String QPDF = arg(Paths.get(EXE_PATH).resolve("qpdf").resolve("qpdf.exe"));
-    private static final String PDFCPU = arg(Paths.get(EXE_PATH).resolve("pdfcpu").resolve("pdfcpu.exe"));
-    private static final String PDFBOX = arg(Paths.get(EXE_PATH).resolve("pdfbox").resolve("pdfbox-app-3.0.0-alpha3.jar"));
+    private static final String CPDF = arg(EXE_PATH.resolve("cpdf").resolve("cpdf.exe"));
+    private static final String QPDF = arg(EXE_PATH.resolve("qpdf").resolve("qpdf.exe"));
+    private static final String PDFCPU = arg(EXE_PATH.resolve("pdfcpu").resolve("pdfcpu.exe"));
+    private static final String PDFBOX = arg(EXE_PATH.resolve("pdfbox").resolve("pdfbox-app-3.0.0-alpha3.jar"));
 
-    private static final String PDFDETACH = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdfdetach.exe"));
-    private static final String PDFFONTS = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdffonts.exe"));
-    private static final String PDFIMAGES = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdfimages.exe"));
-    private static final String PDFINFO = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdfinfo.exe"));
-    private static final String PDFTOHTML = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdftohtml.exe"));
-    private static final String PDFTOPS = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdftops.exe"));
-    private static final String PDFTOTEXT = arg(Paths.get(EXE_PATH).resolve("xpdf").resolve("pdftotext.exe"));
+    private static final String PDFDETACH = arg(EXE_PATH.resolve("xpdf").resolve("pdfdetach.exe"));
+    private static final String PDFFONTS = arg(EXE_PATH.resolve("xpdf").resolve("pdffonts.exe"));
+    private static final String PDFIMAGES = arg(EXE_PATH.resolve("xpdf").resolve("pdfimages.exe"));
+    private static final String PDFINFO = arg(EXE_PATH.resolve("xpdf").resolve("pdfinfo.exe"));
+    private static final String PDFTOHTML = arg(EXE_PATH.resolve("xpdf").resolve("pdftohtml.exe"));
+    private static final String PDFTOPS = arg(EXE_PATH.resolve("xpdf").resolve("pdftops.exe"));
+    private static final String PDFTOTEXT = arg(EXE_PATH.resolve("xpdf").resolve("pdftotext.exe"));
 
     private static final Path PDF_PATH = Paths.get("C:\\Users\\user\\Downloads\\commands\\");
     private static final String IM_PATH = "C:\\Program Files\\ImageMagick-7.1.1-Q16-HDRI\\magick.exe";
