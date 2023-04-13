@@ -44,7 +44,7 @@ public class PdfAnalyzer {
     private static final String PDFTOPS = arg(EXE_PATH.resolve("xpdf").resolve("pdftops.exe"));
     private static final String PDFTOTEXT = arg(EXE_PATH.resolve("xpdf").resolve("pdftotext.exe"));
 
-    private static final Path PDF_PATH = Paths.get("C:\\Users\\user\\Downloads\\commands\\");
+    private static final Path PDF_PATH = Paths.get("G:\\transcend\\Emu\\4tivo\\Magazines\\Eng\\Retro Gamer\\_new\\Annual8");
     private static final String IM_PATH = "C:\\Program Files\\ImageMagick-7.1.1-Q16-HDRI\\magick.exe";
     
     public static void main(String[] args) throws IOException, InterruptedException {
@@ -311,7 +311,7 @@ public class PdfAnalyzer {
         if (condition) list.add(value);
     }
 
-    static SimpleDateFormat format = new SimpleDateFormat("EEE MMM d hh:mm:ss: yyyy");
+    static SimpleDateFormat format = new SimpleDateFormat("EEE MMM d hh:mm:ss: yyyy", Locale.ENGLISH);
 
     public static void pdfBoxInfo(Path pdfPath, Path outputPath) throws IOException {
         //PDDocument document = Loader.loadPDF(new File("C:\\Users\\user\\Downloads\\Sanet.st.Retro_Gamer_UK_-_Issue_244,_2023.pdf"));

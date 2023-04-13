@@ -13,14 +13,16 @@ import java.util.stream.Collectors;
 import static java.awt.RenderingHints.*;
 import static java.awt.image.BufferedImage.TYPE_INT_RGB;
 
+//TODO если наклон страницы сильный, то может зацепить крайние буквы при обрезке белого
+
 // Process images with any colors count, ex. 16M
 public class BorderFix {
 
     private static final Profile profile = new Profile()
-            .withPath("C:\\Users\\user\\Downloads\\bbb\\PlayStation от А до Я. Секреты, пароли, подсказки. Издание 8, дополненное\\tr\\out\\result")
+            .withPath("C:\\Users\\user\\Documents\\Страна PlayStation. TRICKS Gold 2001 #12\\r2\\r2\\result")
             // final page dimensions
-            .withWidth(3640)
-            .withHeight(5500)
+            .withWidth(3900)
+            .withHeight(5570)
             // Indents on all sides, for which black spots are not taken into account (may be massive). 25 for 600 DPI
             .withDx(30)
             .withDy(30)
@@ -31,7 +33,7 @@ public class BorderFix {
             .withPadding(5) // additional padding
             .withFixBlackLeft(true) // Fix black fields from left side
             .withFixBlackRight(true) // Fix black fields from right side
-            .withAllowedBlackPoints(7); // 0 for normal images, add more for very dirty backgrounds
+            .withAllowedBlackPoints(0); // 0 for normal images, add more for very dirty backgrounds
 
     private static final boolean debug = false;
 
