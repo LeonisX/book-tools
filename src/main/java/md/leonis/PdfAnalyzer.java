@@ -29,13 +29,17 @@ import java.util.stream.Collectors;
 
 public class PdfAnalyzer {
 
+    //todo
+    // сжимать - qpdf, pdfcpu - надо выбрать лучший, но чтобы не ломал
+    // установить метадату: cpdf
+
     private static final Path EXE_PATH = Paths.get(".").resolve("commands");
 
     private static final String CPDF = arg(EXE_PATH.resolve("cpdf").resolve("cpdf.exe"));
     private static final String QPDF = arg(EXE_PATH.resolve("qpdf").resolve("qpdf.exe"));
     private static final String PDFCPU = arg(EXE_PATH.resolve("pdfcpu").resolve("pdfcpu.exe"));
     private static final String PDFBOX = arg(EXE_PATH.resolve("pdfbox").resolve("pdfbox-app-3.0.0-alpha3.jar"));
-
+    // XPDF
     private static final String PDFDETACH = arg(EXE_PATH.resolve("xpdf").resolve("pdfdetach.exe"));
     private static final String PDFFONTS = arg(EXE_PATH.resolve("xpdf").resolve("pdffonts.exe"));
     private static final String PDFIMAGES = arg(EXE_PATH.resolve("xpdf").resolve("pdfimages.exe"));
@@ -43,23 +47,27 @@ public class PdfAnalyzer {
     private static final String PDFTOHTML = arg(EXE_PATH.resolve("xpdf").resolve("pdftohtml.exe"));
     private static final String PDFTOPS = arg(EXE_PATH.resolve("xpdf").resolve("pdftops.exe"));
     private static final String PDFTOTEXT = arg(EXE_PATH.resolve("xpdf").resolve("pdftotext.exe"));
+    // POPPLER
+    private static final String PDFIMAGES_POP = arg(EXE_PATH.resolve("poppler").resolve("pdfimages.exe"));
 
-    private static final Path PDF_PATH = Paths.get("G:\\transcend\\Emu\\4tivo\\Magazines\\Eng\\Retro Gamer\\_new\\Annual8");
+    private static final Path PDF_PATH = Paths.get("G:\\transcend\\Emu\\4tivo\\Magazines\\Eng\\Retro Gamer\\test");
     private static final String IM_PATH = "C:\\Program Files\\ImageMagick-7.1.1-Q16-HDRI\\magick.exe";
-    
+
     public static void main(String[] args) throws IOException, InterruptedException {
+        pdfToDir();
+
         for (File pdfName : Objects.requireNonNull(PDF_PATH.toFile().listFiles((dir, name) -> name.endsWith(".pdf")))) {
             //validatePdfFile(pdfName.getName()); //todo parallel execution, это валидация, стоит выполнять раз для всей пачки
-            optimizePdfFile(pdfName.getName());
+            optimizePdfFile(PDF_PATH, pdfName.getName());
             investigatePdfFile(PDF_PATH, pdfName.getName());
         }
-        //investigatePdfFile("2023-03-09 Retro Gamer-2.pdf");
+        //investigatePdfFile(PDF_PATH, "Retro.Gamer.Annual.Volume.8.2022-MagDownload.org-compressed-qpdf.pdf");
 
-        //todo revert
         //тот код разбирает оптимизированные. надо ещё оптимизированные акробатом смотреть
-        /*for (File pdfName : Objects.requireNonNull(PDF_PATH.resolve("optimized").toFile().listFiles((dir, name) -> name.endsWith(".pdf")))) {
+        for (File pdfName : Objects.requireNonNull(PDF_PATH.resolve("optimized").toFile().listFiles((dir, name) -> name.endsWith(".pdf")))) {
+            optimizePdfFile(PDF_PATH.resolve("optimized"), pdfName.getName());
             investigatePdfFile(PDF_PATH.resolve("optimized"), pdfName.getName());
-        }*/
+        }
     }
 
     private static void validatePdfFile(String pdfName) throws IOException, InterruptedException {
@@ -78,24 +86,40 @@ public class PdfAnalyzer {
         sanitizeFile(outputPath.resolve(qpdf), pdfPath);
     }
 
-    private static void optimizePdfFile(String pdfName) throws IOException, InterruptedException {
+    private static void optimizePdfFile(Path inPdfPath, String pdfName) throws IOException, InterruptedException {
         Path outputPath = PDF_PATH.resolve("optimized");
         createDirectories(outputPath);
-        Path pdfPath = PDF_PATH.resolve(pdfName);
+        Path pdfPath = inPdfPath.resolve(pdfName);
         String pdf = arg(pdfPath);
         String pdfFile = pdfName.substring(0, pdfName.length() - 4);
 
+        // если файл с неверными полями то валится.
         runCommand(PDFCPU, "optimize", "-stats", arg(outputPath.resolve(pdfFile + "-stats-pdfcpu.csv")), pdf, arg(outputPath.resolve(pdfFile + "-optimized-pdfcpu.pdf")));
 
-        runCommand(CPDF, "-compress", pdf, "-o", arg(outputPath.resolve(pdfFile + "-compressed-cpdf.pdf")));
-        runCommand(CPDF, "-squeeze", pdf, "-o", arg(outputPath.resolve(pdfFile + "-squeezeed-cpdf.pdf")));
+        //runCommand(CPDF, "-compress", pdf, "-o", arg(outputPath.resolve(pdfFile + "-compressed-cpdf.pdf")));
+        //runCommand(CPDF, "-squeeze", pdf, "-o", arg(outputPath.resolve(pdfFile + "-squeezeed-cpdf.pdf"))); // жмёт хорошо, но может уменьшать картинки
 
+        //todo выключить оптимизацию картинок?
         runCommand(QPDF, "--stream-data=compress", "--recompress-flate", "--compression-level=9",
                 "--normalize-content=n", "--object-streams=generate", "--optimize-images", "--oi-min-width=0", "--oi-min-height=0",
-                "--oi-min-area=0", "--min-version=1.7", pdf, arg(outputPath.resolve(pdfFile + "-compressed-qpdf.qdf")));
+                "--oi-min-area=0", "--min-version=1.7", pdf, arg(outputPath.resolve(pdfFile + "-compressed-qpdf.pdf")));
+
+        /*runCommand(QPDF, "--stream-data=compress", "--recompress-flate", "--compression-level=9",
+                "--normalize-content=n", "--object-streams=generate", "--optimize-images", "--oi-min-width=0", "--oi-min-height=0",
+                "--oi-min-area=0", "--min-version=1.7", "--linearize", pdf, arg(outputPath.resolve(pdfFile + "-compressed-linearized-qpdf.pdf")));*/
 
         // --externalize-inline-images -ii-min-bytes=0
-        runCommand(QPDF, "--linearize", pdf, arg(outputPath.resolve(pdfFile + "-linearized-qpdf.qdf")));
+        //runCommand(QPDF, "--linearize", pdf, arg(outputPath.resolve(pdfFile + "-linearized-qpdf.pdf")));
+
+        // mutool convert генерирует раздутые файлы. Не годится.
+
+        //todo
+        // cpdf set metadata
+
+        //TIFF
+        Path tiffOutputPath = PDF_PATH.resolve("tiff").resolve(pdfFile);
+        createDirectories(tiffOutputPath);
+        runCommand(PDFIMAGES_POP, "-tiff", pdf, arg(tiffOutputPath.resolve("img")));
     }
 
     private static void investigatePdfFile(Path inPdfPath, String pdfName) throws IOException, InterruptedException {
@@ -170,9 +194,10 @@ public class PdfAnalyzer {
         runCommand(PDFIMAGES, "-raw", pdf, arg(rawImagesPath.resolve("img")));
         sanitizeFile(outputPath.resolve("images.txt"), imagesPath);
 
-        imagesPath = outputPath.resolve("images-cpdf");
+        // не всегда вытаскивает все картинки
+        /*imagesPath = outputPath.resolve("images-cpdf");
         createDirectories(imagesPath);
-        runCommand(CPDF, "-extract-images", pdf, "-im", IM_PATH, "-o", arg(imagesPath.resolve("img")));
+        runCommand(CPDF, "-extract-images", pdf, "-im", IM_PATH, "-o", arg(imagesPath.resolve("img")));*/
 
         // это лишнее
         /*imagesPath = outputPath.resolve("images-pdfbox");
@@ -188,7 +213,11 @@ public class PdfAnalyzer {
         // Html, fonts
         Path htmlPath = outputPath.resolve("html");
         deleteDirectoryStream(htmlPath);
-        runCommand(PDFTOHTML, /*"-embedbackground", "-embedfonts", */"-table", pdf, arg(htmlPath));
+        runCommand(PDFTOHTML, "-table", pdf, arg(htmlPath));
+        //runCommand(PDFTOHTML, "-embedbackground", "-embedfonts", "-table", pdf, arg(htmlPath));
+
+        runCommand("java", "-jar", PDFBOX, "export:text", "-html", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("html-pdfbox.html")));
+
         Path fontsPath = outputPath.resolve("fonts-pdfcpu");
         createDirectories(fontsPath);
         runCommand(PDFCPU, "extract", "-mode", "font", pdf, arg(fontsPath));
@@ -198,19 +227,18 @@ public class PdfAnalyzer {
         runCommand(PDFTOTEXT, "-enc", "UTF-8", pdf, arg(outputPath.resolve("text-simple.txt")));
 
         // PostScript, structure
-        runCommand(CPDF, "-draft", pdf, "AND", "-clean", "-o", arg(outputPath.resolve("pdf-draft.pdf")));
+        /*runCommand(CPDF, "-draft", pdf, "AND", "-clean", "-o", arg(outputPath.resolve("pdf-draft.pdf")));
         runCommand(PDFTOPS, arg(outputPath.resolve("pdf-draft.pdf")), arg(outputPath.resolve("pdf-draft.ps")));
-        runCommand(CPDF, "-output-json", arg(outputPath.resolve("pdf-draft.pdf")), "-o", arg(outputPath.resolve("pdf-cpdf.json")));
+        runCommand(CPDF, "-output-json", arg(outputPath.resolve("pdf-draft.pdf")), "-o", arg(outputPath.resolve("pdf-cpdf.json")));*/
 
-        runCommand("java", "-jar", PDFBOX, "export:text", "-html", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("html-pdfbox.html")));
         runCommand("java", "-jar", PDFBOX, "export:text", "-rotationMagic", "-sort", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("text-pdfbox.txt")));
-        runCommand("java", "-jar", PDFBOX, "export:fdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdf.fdf")));
-        runCommand("java", "-jar", PDFBOX, "export:xfdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdf.xfdf")));
+        /*runCommand("java", "-jar", PDFBOX, "export:fdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdf.fdf")));
+        runCommand("java", "-jar", PDFBOX, "export:xfdf", arg("-i=" + pdfPath.toAbsolutePath()), arg("-o=" + outputPath.resolve("pdf.xfdf")));*/
 
-        runCommand(QPDF, "--remove-restrictions", "--decrypt", "--object-streams=disable",
+        /*runCommand(QPDF, "--remove-restrictions", "--decrypt", "--object-streams=disable",
                 "--deterministic-id", "--qdf", "--no-original-object-ids", "--coalesce-contents", "--normalize-content=y", pdf, arg(outputPath.resolve("pdf.qdf")));
         runCommand(QPDF, "--remove-restrictions", "--decrypt", "--object-streams=disable",
-                "--deterministic-id", "--json-output", "--no-original-object-ids", "--coalesce-contents", "--normalize-content=y", pdf, arg(outputPath.resolve("pdf.json")));
+                "--deterministic-id", "--json-output", "--no-original-object-ids", "--coalesce-contents", "--normalize-content=y", pdf, arg(outputPath.resolve("pdf.json")));*/
 
         // Render
 
@@ -229,12 +257,11 @@ public class PdfAnalyzer {
         // так же есть другие команды https://mupdf.com/docs/mutool.html
 
 
-
         Files.delete(pdfPath);
 
         for (File file : Objects.requireNonNull(outputPath.toFile().listFiles())) {
             if (file.isFile() && file.length() == 0)
-            file.delete();
+                file.delete();
         }
 
         for (File file : Objects.requireNonNull(outputPath.toFile().listFiles())) {
@@ -250,10 +277,10 @@ public class PdfAnalyzer {
     @SuppressWarnings("all")
     static void deleteDirectoryStream(Path path) throws IOException {
         if (Files.exists(path) && Files.isDirectory(path))
-        Files.walk(path)
-                .sorted(Comparator.reverseOrder())
-                .map(Path::toFile)
-                .forEach(File::delete);
+            Files.walk(path)
+                    .sorted(Comparator.reverseOrder())
+                    .map(Path::toFile)
+                    .forEach(File::delete);
     }
 
     private static String arg(Path arg) {
@@ -262,6 +289,18 @@ public class PdfAnalyzer {
 
     private static String arg(String arg) {
         return '"' + arg + '"';
+    }
+
+    private static void pdfToDir() {
+        //Path cat = Paths.get("G:\\transcend\\Emu\\4tivo\\Magazines\\Eng\\Retro Gamer\\1. Retro Gamer (UK) (2004-Present)");
+        //Path cat = Paths.get("G:\\transcend\\Emu\\4tivo\\Magazines\\Eng\\Retro Gamer\\3. Retro Gamer Annual (UK) (2015-Present)");
+        Path cat = Paths.get("G:\\transcend\\Emu\\4tivo\\Magazines\\Eng\\Retro Gamer\\4. Retro Gamer Special (UK)");
+        for (File pdfFile : Objects.requireNonNull(cat.toFile().listFiles((dir, name) -> name.endsWith(".pdf")))) {
+            String name = pdfFile.getName();
+            name = name.substring(0, name.length() - 4);
+            createDirectories(cat.resolve(name));
+            pdfFile.renameTo(cat.resolve(name).resolve(pdfFile.getName()).toFile());
+        }
     }
 
     public static void runCommand(Path output, String... args) throws IOException, InterruptedException {
@@ -299,7 +338,7 @@ public class PdfAnalyzer {
             //System.exit(-1);
         }
     }
-    
+
     private static void createDirectories(Path path) {
         try {
             Files.createDirectories(path);
@@ -313,99 +352,100 @@ public class PdfAnalyzer {
 
     static SimpleDateFormat format = new SimpleDateFormat("EEE MMM d hh:mm:ss: yyyy", Locale.ENGLISH);
 
-    public static void pdfBoxInfo(Path pdfPath, Path outputPath) throws IOException {
-        //PDDocument document = Loader.loadPDF(new File("C:\\Users\\user\\Downloads\\Sanet.st.Retro_Gamer_UK_-_Issue_244,_2023.pdf"));
-        PDDocument document = Loader.loadPDF(pdfPath.toFile());
-
-        Map<String, Object> output = new LinkedHashMap<>();
-        output.put("Version", document.getDocument().getVersion());
-        output.put("Pages", document.getNumberOfPages());
-        output.put("File size", Files.size(pdfPath) + " bytes");
-        output.put("Encryption", document.getDocument().isEncrypted());
-
-        AccessPermission accessPermission = document.getCurrentAccessPermission();
-        List<String> permissions = new ArrayList<>();
-        if (accessPermission.isOwnerPermission()) {
-            permissions.add("Full access");
-        } else {
-            addIfTrue(permissions, accessPermission.canAssembleDocument(), "AssembleDocument");
-            addIfTrue(permissions, accessPermission.canExtractContent(), "ExtractContent");
-            addIfTrue(permissions, accessPermission.canExtractForAccessibility(), "ExtractForAccessibility");
-            addIfTrue(permissions, accessPermission.canFillInForm(), "FillInForm");
-            addIfTrue(permissions, accessPermission.canPrint(), "Print");
-            addIfTrue(permissions, accessPermission.canModify(), "Modify");
-            addIfTrue(permissions, accessPermission.canModifyAnnotations(), "ModifyAnnotations");
-            addIfTrue(permissions, accessPermission.canPrintDegraded(), "PrintDegraded");
-            addIfTrue(permissions, accessPermission.isOwnerPermission(), "OwnerPermission");
-            addIfTrue(permissions, accessPermission.isReadOnly(), "ReadOnly");
-        }
-
-        output.put("Permissions", String.join(", ", permissions));
-
-        if (document.getNumberOfPages() > 0) {
-            PDPage page = document.getPage(0);
-            //TODO тут на самом деле берётся от всех боксов и выводятся все габариты какие есть
-            output.put("Page size", String.format("%s x %s pts (rotated %s degrees)", page.getMediaBox().getWidth(), page.getMediaBox().getHeight(), page.getRotation()));
-        }
-        output.put("Page layout", document.getDocumentCatalog().getPageLayout().stringValue());
-        output.put("Page mode", document.getDocumentCatalog().getPageMode().stringValue());
-
-        output.put("Title", document.getDocumentInformation().getTitle());
-        output.put("Author", document.getDocumentInformation().getAuthor());
-        output.put("Subject", document.getDocumentInformation().getSubject());
-        output.put("Keywords", document.getDocumentInformation().getKeywords());
-        output.put("Creator", document.getDocumentInformation().getCreator());
-        output.put("Producer", document.getDocumentInformation().getProducer());
-        if (document.getDocumentInformation().getCreationDate() != null) {
-            //TODO тут смещение
-            output.put("Created", format.format(document.getDocumentInformation().getCreationDate().getTime())); // Thu Mar 16 02:50:06 2023
-        }
-        if (document.getDocumentInformation().getModificationDate() != null) {
-            //TODO тут смещение
-            output.put("Modified", format.format(document.getDocumentInformation().getModificationDate().getTime()));
-        }
-        output.put("Trapped", document.getDocumentInformation().getTrapped());
-        output.put("Linearized", document.getDocument().getLinearizedDictionary() != null);
-
-        String text = null;
+    public static void pdfBoxInfo(Path pdfPath, Path outputPath) {
         try {
-            PDDocumentCatalog catalog = document.getDocumentCatalog();
-            PDMetadata metadata = catalog.getMetadata();
-            if (metadata != null) {
-                InputStream xmlInputStream = metadata.exportXMPMetadata();
+            //PDDocument document = Loader.loadPDF(new File("C:\\Users\\user\\Downloads\\Sanet.st.Retro_Gamer_UK_-_Issue_244,_2023.pdf"));
+            PDDocument document = Loader.loadPDF(pdfPath.toFile());
 
-                text = new BufferedReader(
-                        new InputStreamReader(xmlInputStream, StandardCharsets.UTF_8))
-                        .lines().map(s -> s.replace("xap:", "xmp:"))
-                        .map(s -> s.replace("xmp:", ""))
-                        .collect(Collectors.joining("\n"));
+            Map<String, Object> output = new LinkedHashMap<>();
+            output.put("Version", document.getDocument().getVersion());
+            output.put("Pages", document.getNumberOfPages());
+            output.put("File size", Files.size(pdfPath) + " bytes");
+            output.put("Encryption", document.getDocument().isEncrypted());
 
-                DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-                InputSource src = new InputSource();
-                src.setCharacterStream(new StringReader(text));
-                Document doc = builder.parse(src);
-                XPath xPath = XPathFactory.newInstance().newXPath();
-                NodeList nodeList = (NodeList) xPath.compile("//CreateDate").evaluate(doc, XPathConstants.NODESET);
-                if (nodeList.getLength() > 0) {
-                    output.put("XMP xmp:CreateDate", nodeList.item(0).getTextContent());
-                }
-                nodeList = (NodeList) xPath.compile("//MetadataDate").evaluate(doc, XPathConstants.NODESET);
-                if (nodeList.getLength() > 0) {
-                    output.put("XMP xmp:MetadataDate", nodeList.item(0).getTextContent());
-                }
-                nodeList = (NodeList) xPath.compile("//ModifyDate").evaluate(doc, XPathConstants.NODESET);
-                if (nodeList.getLength() > 0) {
-                    output.put("XMP xmp:ModifyDate", nodeList.item(0).getTextContent());
-                }
+            AccessPermission accessPermission = document.getCurrentAccessPermission();
+            List<String> permissions = new ArrayList<>();
+            if (accessPermission.isOwnerPermission()) {
+                permissions.add("Full access");
+            } else {
+                addIfTrue(permissions, accessPermission.canAssembleDocument(), "AssembleDocument");
+                addIfTrue(permissions, accessPermission.canExtractContent(), "ExtractContent");
+                addIfTrue(permissions, accessPermission.canExtractForAccessibility(), "ExtractForAccessibility");
+                addIfTrue(permissions, accessPermission.canFillInForm(), "FillInForm");
+                addIfTrue(permissions, accessPermission.canPrint(), "Print");
+                addIfTrue(permissions, accessPermission.canModify(), "Modify");
+                addIfTrue(permissions, accessPermission.canModifyAnnotations(), "ModifyAnnotations");
+                addIfTrue(permissions, accessPermission.canPrintDegraded(), "PrintDegraded");
+                addIfTrue(permissions, accessPermission.isOwnerPermission(), "OwnerPermission");
+                addIfTrue(permissions, accessPermission.isReadOnly(), "ReadOnly");
+            }
 
-                // TODO
-                //XMP pdf:Producer: Acrobat Distiller 9.4.2 (Windows)
-                //XMP xmp:CreateDate: 2020-10-12T19:19:51+03:00
-                //XMP xmp:CreatorTool: PScript5.dll Version 5.2.2
-                //XMP xmp:MetadataDate: 2020-10-12T19:52:53+03:00
-                //XMP xmp:ModifyDate: 2020-10-12T19:52:53+03:00
-                //XMP dc:title: puteshestvie-111761.indd
-                //XMP dc:creator: Guk.AL
+            output.put("Permissions", String.join(", ", permissions));
+
+            if (document.getNumberOfPages() > 0) {
+                PDPage page = document.getPage(0);
+                //TODO тут на самом деле берётся от всех боксов и выводятся все габариты какие есть
+                output.put("Page size", String.format("%s x %s pts (rotated %s degrees)", page.getMediaBox().getWidth(), page.getMediaBox().getHeight(), page.getRotation()));
+            }
+            output.put("Page layout", document.getDocumentCatalog().getPageLayout().stringValue());
+            output.put("Page mode", document.getDocumentCatalog().getPageMode().stringValue());
+
+            output.put("Title", document.getDocumentInformation().getTitle());
+            output.put("Author", document.getDocumentInformation().getAuthor());
+            output.put("Subject", document.getDocumentInformation().getSubject());
+            output.put("Keywords", document.getDocumentInformation().getKeywords());
+            output.put("Creator", document.getDocumentInformation().getCreator());
+            output.put("Producer", document.getDocumentInformation().getProducer());
+            if (document.getDocumentInformation().getCreationDate() != null) {
+                //TODO тут смещение
+                output.put("Created", format.format(document.getDocumentInformation().getCreationDate().getTime())); // Thu Mar 16 02:50:06 2023
+            }
+            if (document.getDocumentInformation().getModificationDate() != null) {
+                //TODO тут смещение
+                output.put("Modified", format.format(document.getDocumentInformation().getModificationDate().getTime()));
+            }
+            output.put("Trapped", document.getDocumentInformation().getTrapped());
+            output.put("Linearized", document.getDocument().getLinearizedDictionary() != null);
+
+            String text = null;
+            try {
+                PDDocumentCatalog catalog = document.getDocumentCatalog();
+                PDMetadata metadata = catalog.getMetadata();
+                if (metadata != null) {
+                    InputStream xmlInputStream = metadata.exportXMPMetadata();
+
+                    text = new BufferedReader(
+                            new InputStreamReader(xmlInputStream, StandardCharsets.UTF_8))
+                            .lines().map(s -> s.replace("xap:", "xmp:"))
+                            .map(s -> s.replace("xmp:", ""))
+                            .collect(Collectors.joining("\n"));
+
+                    DocumentBuilder builder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+                    InputSource src = new InputSource();
+                    src.setCharacterStream(new StringReader(text));
+                    Document doc = builder.parse(src);
+                    XPath xPath = XPathFactory.newInstance().newXPath();
+                    NodeList nodeList = (NodeList) xPath.compile("//CreateDate").evaluate(doc, XPathConstants.NODESET);
+                    if (nodeList.getLength() > 0) {
+                        output.put("XMP xmp:CreateDate", nodeList.item(0).getTextContent());
+                    }
+                    nodeList = (NodeList) xPath.compile("//MetadataDate").evaluate(doc, XPathConstants.NODESET);
+                    if (nodeList.getLength() > 0) {
+                        output.put("XMP xmp:MetadataDate", nodeList.item(0).getTextContent());
+                    }
+                    nodeList = (NodeList) xPath.compile("//ModifyDate").evaluate(doc, XPathConstants.NODESET);
+                    if (nodeList.getLength() > 0) {
+                        output.put("XMP xmp:ModifyDate", nodeList.item(0).getTextContent());
+                    }
+
+                    // TODO
+                    //XMP pdf:Producer: Acrobat Distiller 9.4.2 (Windows)
+                    //XMP xmp:CreateDate: 2020-10-12T19:19:51+03:00
+                    //XMP xmp:CreatorTool: PScript5.dll Version 5.2.2
+                    //XMP xmp:MetadataDate: 2020-10-12T19:52:53+03:00
+                    //XMP xmp:ModifyDate: 2020-10-12T19:52:53+03:00
+                    //XMP dc:title: puteshestvie-111761.indd
+                    //XMP dc:creator: Guk.AL
 
 /*                <?xpacket begin="ï»¿" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 4.2.1-c043 52.372728, 2009/01/18-15:08:04        ">
@@ -445,9 +485,8 @@ public class PdfAnalyzer {
 <?xpacket end="w"?>*/
 
 
-
-                //TODO Trapped
-                // XMP pdf:Trapped: False
+                    //TODO Trapped
+                    // XMP pdf:Trapped: False
 
                 /*<?xpacket begin="ï»¿" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Adobe XMP Core 4.2.1-c043 52.372728, 2009/01/18-15:08:04        ">
@@ -497,14 +536,18 @@ public class PdfAnalyzer {
    </rdf:RDF>
 </x:xmpmeta>
 <?xpacket end="w"?>*/
+                }
+            } catch (Exception e) {
+                System.out.println(text);
+                e.printStackTrace();
             }
+
+            Files.write(outputPath.resolve("info-pdfbox.txt"), output.entrySet().stream().filter(e -> e.getValue() != null)
+                    .map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.toList()));
         } catch (Exception e) {
-            System.out.println(text);
+            System.out.println("Error processing: " + pdfPath);
             e.printStackTrace();
         }
-
-        Files.write(outputPath.resolve("info-pdfbox.txt"), output.entrySet().stream().filter(e -> e.getValue() != null)
-                .map(e -> e.getKey() + ": " + e.getValue()).collect(Collectors.toList()));
     }
 
     public static void otherExperiments(Path pdfPath, Path outputPath) throws IOException {
