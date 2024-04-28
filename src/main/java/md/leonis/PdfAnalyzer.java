@@ -375,7 +375,7 @@ public class PdfAnalyzer {
                 addIfTrue(permissions, accessPermission.canPrint(), "Print");
                 addIfTrue(permissions, accessPermission.canModify(), "Modify");
                 addIfTrue(permissions, accessPermission.canModifyAnnotations(), "ModifyAnnotations");
-                addIfTrue(permissions, accessPermission.canPrintDegraded(), "PrintDegraded");
+                addIfTrue(permissions, accessPermission.canPrintFaithful(), "PrintFaithful");
                 addIfTrue(permissions, accessPermission.isOwnerPermission(), "OwnerPermission");
                 addIfTrue(permissions, accessPermission.isReadOnly(), "ReadOnly");
             }

@@ -6,14 +6,20 @@
 
 package net.sf.image4j.codec.bmp;
 
-import java.awt.image.*;
-import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
-
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.WritableImage;
-import net.sf.image4j.io.*;
+import net.sf.image4j.io.CountingInputStream;
+import net.sf.image4j.io.LittleEndianInputStream;
+
+import java.awt.image.BufferedImage;
+import java.awt.image.IndexColorModel;
+import java.awt.image.WritableRaster;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 
 /**
  * Decodes images in BMP format.
